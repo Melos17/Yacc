@@ -1,0 +1,48 @@
+void YaccGenerate::optimizeReduce(LALR& lalr) {
+
+	vector<vector<StatusId>> goTo = lalr.goTo;
+	for (StatusId status = 0; status < (StatusId) lalr.action.size(); ++status) {
+		for (TerminalId tid = 0; tid < (TerminalId) lalr.action[status].size(); ++tid) {
+			Action& action = lalr.action[status][tid];
+			if (action.type == Action::Reduce) {
+				GrammarId firstGrammarId = action.val;
+				if(lalr.reduce[firstGrammarId].childrenCount != 1) {
+					continue;
+				}
+				string& functionName = lalr.reduce[firstGrammarId].functionName;
+				string& parentType = lalr.reduce[firstGrammarId].parentType;
+
+				if (functionName.empty() || parentType.empty() || parentType != "Expression") { //
+					continue;
+				}
+
+				NonterminalId firstPid = lalr.reduce[firstGrammarId].parent;
+				for (int frontStatus = 0; frontStatus < (int) lalr.goTo.size(); ++frontStatus) {
+					// replace with a final parent unit when we do same reduce process
+					if (lalr.goTo[frontStatus][firstPid] == -1) {
+						continue;
+					}
+					GrammarId lastGrammarId = firstGrammarId;
+					while (1) {
+						StatusId toStatus = lalr.goTo[frontStatus][lalr.reduce[lastGrammarId].parent];
+						if (toStatus != -1 && lalr.action[toStatus][tid].type == Action::Reduce) {
+							GrammarId newGrammarId = lalr.action[toStatus][tid].val;
+							if(lalr.reduce[newGrammarId].childrenCount == 1 && lalr.reduce[newGrammarId].functionName == functionName && lalr.reduce[newGrammarId].parentType == parentType) {
+								assert(lastGrammarId != newGrammarId);
+								lastGrammarId = newGrammarId;
+								//break;
+								continue;
+							}
+						}
+						break;
+					}
+					
+					NonterminalId lastPid = lalr.reduce[lastGrammarId].parent;
+					goTo[frontStatus][firstPid] = lalr.goTo[frontStatus][lastPid];
+				}
+				
+			}
+		}
+	}
+	lalr.goTo = goTo;
+}

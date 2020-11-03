@@ -1,0 +1,231 @@
+unit.h
+
+bool operator==(shared_ptr<Grammar> grammar1, shared_ptr<Grammar> grammar2) {
+	return *grammar1 == *grammar2;
+}
+
+
+
+#ifndef UNIT_H
+#define UNIT_H
+
+#include <string>
+#include <vector>
+#include <memory>
+
+using std::string;
+using std::vector;
+using std::weak_ptr;
+using std::shared_ptr;
+using std::make_pair;
+using std::unordered_map;
+
+
+class GrammarController;
+
+
+typedef size_t UniqueUnitId;
+class Unit {
+	Unit(const string& unitName, UniqueUnitId uniqueId) : mName(unitName) {
+		mUniqueId = uniqueId;
+		mIsTerminal = true;
+	}
+public:
+	friend GrammarController;
+
+	void setIsTerminal(bool isTerminal) {
+		mIsTerminal = isTerminal;
+	}
+
+	bool operator==(const Unit unit) const {
+		return mUniqueId == unit.mUniqueId;
+	}
+
+	UniqueUnitId getUniqueId() const {
+		return mUniqueId;
+	}
+
+private:
+	UniqueUnitId mUniqueId;
+	string mName;
+	bool mIsTerminal;
+};
+
+bool operator==(weak_ptr<Unit> unit1, weak_ptr<Unit> unit2) {
+	if (shared_ptr<Unit> share_unit1 = unit1.lock()) {
+		if (shared_ptr<Unit> share_unit2 = unit2.lock()) {
+			return *share_unit1 == *share_unit2;
+		}
+	}
+	return false;
+}
+
+
+class Grammar {
+	Grammar(weak_ptr<Unit> parent, vector<weak_ptr<Unit>> children) : mParent(parent), mChildren(children) {
+	}
+public:
+	friend GrammarController;
+
+	weak_ptr<Unit> getChild(size_t index) {
+		assert(index >= mChildren.size());
+		return mChildren[index];
+	}
+
+	size_t getChildrenCount() const {
+		return mChildren.size();
+	}
+
+	bool operator==(const Grammar& grammar) const {
+		return mParent == grammar.mParent && mChildren == grammar.mChildren;
+	}
+
+private:
+	vector<weak_ptr<Unit>> mChildren;
+	weak_ptr<Unit> mParent;
+};
+
+
+typedef size_t UniqueItemId;
+class Item {
+public:
+	Item(UniqueItemId uniqueId, weak_ptr<Grammar> grammar, size_t index) : mGrammar(grammar) {
+		mIndex = index;
+		mUniqueId = uniqueId;
+	}
+
+	weak_ptr<Unit> getNextUnit() {
+		if (shared_ptr<Grammar> grammar = mGrammar.lock()) {
+			return grammar->getChild(mIndex);
+		}
+		assert(false);
+		return weak_ptr<Unit>();
+	}
+
+	bool operator==(const Item& item) {
+		return mGrammar.lock() == item.mGrammar.lock() && mIndex == item.mIndex;
+	}
+
+	Item getNextItem() {
+
+	}
+
+	UniqueItemId getUniqueId() { return mUniqueId; }
+
+private:
+	weak_ptr<Grammar> mGrammar;
+	size_t mIndex;
+	UniqueItemId mUniqueId;
+};
+
+
+
+
+class GrammarController {
+public:
+	GrammarController() {
+		addUnit("#"); // End, id:0
+		addUnit("`"); // Start S`, id:1
+	}
+
+	void addStartUnit(weak_ptr<Unit> start) {
+		if (mStatus.size() == 0) {
+			mStatus.resize(1);
+		}
+		// vector<vector<Item>> mStatus;
+		mStatus[0].push_back();
+		weak_ptr<Unit> s = getUnit("`");
+		vector<weak_ptr<Unit>> child = { start };
+		addGrammar(s, move(child));
+	}
+
+	bool hasStartUnit() const {
+		return mUnitIdToGrammars.size() >= 1;
+	}
+
+	weak_ptr<Grammar> addGrammar(weak_ptr<Unit> parent, vector<weak_ptr<Unit>>&& children) {
+		if (shared_ptr<Unit> _parent = parent.lock()) {
+			UniqueUnitId unitId = _parent->getUniqueId();
+			vector<shared_ptr<Grammar>>& grammars = mUnitIdToGrammars[unitId];
+			children.push_back(getUnit("#"));
+			shared_ptr<Grammar> newGrammar = shared_ptr<Grammar>(new Grammar(parent, children));
+			if (find(grammars.begin(), grammars.end(), newGrammar) == grammars.end()) {
+				mUnitIdToGrammars[unitId].push_back(newGrammar);
+				return newGrammar;
+			}
+		}
+		return weak_ptr<Grammar>();
+	}
+
+	bool hasUnit(const string& unitName) const {
+		return mNameToUnits.find(unitName) != mNameToUnits.end();
+	}
+
+	void addUnit(const string& unitName) {
+		Unit* unit = new Unit(unitName, mUnusedUnitId++);
+		shared_ptr<Unit> unitPtr = shared_ptr<Unit>(unit);
+		mNameToUnits.emplace(unitName, unitPtr);
+		mUniqueIdToUnits.emplace(unit->getUniqueId(), unitPtr);
+	}
+
+	UniqueUnitId getEndUnitId() const {
+		return getUnit("#")->getUniqueId();
+	}
+
+	UniqueItemId addItem(weak_ptr<Grammar> grammar, size_t index) {
+		if (shared_ptr<Grammar> _grammar = grammar.lock()) {
+			assert(index < _grammar->getChildrenCount());
+		}
+		Item item(mUnusedItemId, grammar, index);
+		weak_ptr<Unit> nextUnit = item.getNextUnit();
+		if (shared_ptr<Unit> _nextUnit = nextUnit.lock()) {
+			UniqueUnitId nextUnitId = _nextUnit->getUniqueId();
+			vector<Item>& items = mNextUnitIdToItems[nextUnitId];
+			if (find(items.begin(), items.end(), item) == items.end()) {
+				items.push_back(item);
+				mUniqueIdToItem[mUnusedItemId] = item;
+				return mUnusedItemId++;
+			}
+		}
+		assert(false);
+		return 0;
+	}
+
+	bool hasItem(Item item) const { // no sure necessary.
+		return mUniqueIdToItem.find(item.getUniqueId()) != mUniqueIdToItem.end();
+	}
+
+	shared_ptr<Unit> getUnit(const string& unitName) const {
+		auto it = mNameToUnits.find(unitName);
+		assert(it != mNameToUnits.end());
+		return it->second;
+	}
+
+	UniqueUnitId getUnitCount() const { return mUnusedUnitId; }
+
+
+	void calculate() {
+
+	}
+
+private:
+
+	void addStatus(vector<Item>&& status) {
+		mStatus.push_back(status);
+	}
+
+	UniqueUnitId mUnusedUnitId;
+	unordered_map<string, shared_ptr<Unit>> mNameToUnits;
+	unordered_map<UniqueUnitId, shared_ptr<Unit>> mUniqueIdToUnits;
+
+	unordered_map<UniqueUnitId, vector<shared_ptr<Grammar>>> mUnitIdToGrammars;
+
+	UniqueItemId mUnusedItemId;
+	unordered_map<UniqueUnitId, vector<Item>> mNextUnitIdToItems;
+	unordered_map<UniqueItemId, Item> mUniqueIdToItem;
+
+	vector<vector<Item>> mStatus;
+};
+
+
+#endif

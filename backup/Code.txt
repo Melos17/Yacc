@@ -1,0 +1,478 @@
+
+struct PrimaryExpression;
+struct PostfixExpression;
+struct ArgumentExpressionList;
+struct UnaryExpression;
+struct CastExpression;
+struct MultiplicativeExpression;
+struct AdditiveExpression;
+struct ShiftExpression;
+struct RelationalExpression;
+struct EqualityExpression;
+struct AndExpression;
+struct ExclusiveOrExpression;
+struct InclusiveOrExpression;
+struct LogicalAndExpression;
+struct LogicalOrExpression;
+struct ConditionalExpression;
+struct AssignmentExpression;
+struct Expression;
+struct ConstantExpression;
+struct Declaration;
+struct DeclarationSpecifiers;
+struct InitDeclaratorList;
+struct InitDeclarator;
+struct StorageClassSpecifier;
+struct TypeSpecifier;
+struct StructOrUnion;
+struct StructDeclarator;
+struct SpecifierQualifierList;
+struct StructDeclaratorList;
+struct StructDeclaration;
+struct StructDeclarationList;
+struct StructOrUnionSpecifier;
+struct Enumerator;
+struct EnumeratorList;
+struct EnumSpecifier;
+struct TypeQualifierList;
+struct TypeQualifier;
+struct IdentifierList;
+struct Declarator;
+struct DirectDeclarator {
+struct DeclarationList;
+struct DirectDeclaration;
+struct Pointer;
+struct ParameterDeclaration;
+struct ParameterList;
+struct ParameterTypeList;
+struct Initializer;
+struct InitializerList;
+struct AbstractDeclarator;
+struct DirectAbstractDeclarator;
+struct TypeName;
+struct IterationStatement;
+struct SelectionStatement;
+struct StatementList;
+struct LabeledStatement;
+struct CompoundStatement;
+struct JumpStatement;
+struct Statement;
+struct FunctionDefinition;
+
+//
+enum PrimaryExpressionType {
+	IDENTIFIER, CONSTANT, STRING_LITERAL, EXPRESSION
+};
+struct PrimaryExpression : Unit {
+	PrimaryExpressionType type;
+	string content;
+	Expression* expression;
+};
+
+enum PostfixExpressionType {
+	PRIMARY_EXPRESSION, ARRAY, FUNCTION, MEMBER, PTR_OP, INC_OP, DEC_OP
+};
+struct PostfixExpression : Unit {
+	PrimaryExpression* primaryExpression;
+	PostfixExpressionType type;
+	Expression* expression;
+	ArgumentExpressionList* argumentExpressionList;
+	string identifier;
+	PostfixExpression* next;
+};
+
+struct ArgumentExpressionList : Unit {
+	AssignmentExpression* assignmentExpression;
+	ArgumentExpressionList* next;
+};
+
+enum UnaryExpressionType {
+	POSTFIX_EXP, INC_OP, DEC_OP, ADDRESS_OF, ADDRESSING, POSITIVE, NEGATIVE, COMPLEMENT, NOT, SIZEOF
+};
+struct UnaryExpression : Unit {
+	PostfixExpression* postfixExpression;
+	UnaryExpressionType type;
+	TypeName typeName;
+	CastExpression* castExpression;
+};
+
+struct CastExpression : Unit {
+	UnaryExpression* unaryExpression;
+	CastExpression* next;
+	TypeName* typeName;
+};
+
+enum MultiplicativeExpressionType {
+	NONE, MULTI, DIVIDE, MOD
+};
+struct MultiplicativeExpression : Unit {
+	MultiplicativeExpression* multiExpression;
+	MultiplicativeExpressionType type;
+	CastExpression* castExpression;
+};
+
+enum AdditiveExpressionType {
+	NONE, ADD, MINUS
+};
+struct AdditiveExpression : Unit {
+	AdditiveExpression* addExpression;
+	AdditiveExpressionType type;
+	MultiplicativeExpression* multiExpression;
+};
+
+enum ShiftExpressionType {
+	NONE, LEFT, RIGHT
+};
+struct ShiftExpression : Unit {
+	ShiftExpression* shiftExpression;
+	ShiftExpressionType type；
+	AdditiveExpression* addExpression;
+};
+
+enum RelationalExpressionType {
+	NONE, LT, GT, LE, GE
+};
+struct RelationalExpression : Unit {
+	RelationalExpression* relationalExpression;
+	RelationalExpressionType type;
+	ShiftExpression* shiftExpression;
+};
+
+enum EqualityExpressionType {
+	NONE, EQ, NE
+};
+struct EqualityExpression : Unit {
+	EqualityExpressionType type;
+	EqualityExpression* equalityExpression;
+	RelationalExpression* relationalExpression;
+};
+
+struct AndExpression : Unit {
+	AndExpression* andExpression;
+	EqualityExpression* equalityExpression;
+};
+
+struct ExclusiveOrExpression : Unit {
+	ExclusiveOrExpression* exclusiveOrExpression;
+	AndExpression* andExpression;
+};
+
+struct InclusiveOrExpression : Unit {
+	InclusiveOrExpression* inclusiveOrExpression;
+	ExclusiveOrExpression* exclusiveOrExpression;
+};
+
+struct LogicalAndExpression : Unit {
+	LogicalAndExpression* logicalAndExpression;
+	InclusiveOrExpression* inclusiveOrExpression;
+};
+
+struct LogicalOrExpression : Unit {
+	LogicalOrExpression* logicalOrExpression;
+	LogicalAndExpression* logicalAndExpression;
+};
+
+struct ConditionalExpression : Unit {
+	LogicalOrExpression* logicalOrExpression;
+	Expression* expression;
+	ConditionalExpression* conditionalExpression;
+};
+
+struct AssignmentExpression : Unit {
+	ConditionalExpression* conditionalExpression;
+	UnaryExpression* unaryExpression;
+	TerminalUnit* assignmentOperator;
+	AssignmentExpression* next;
+};
+
+struct Expression : Unit {
+	Expression* next;
+	AssignmentExpression* assignmentExpression;
+};
+
+struct ConstantExpression : Unit {
+	string constant;
+};
+
+
+//
+struct Declaration : Unit {
+	DeclarationSpecifiers* declarationSpecifiers;
+	InitDeclaratorList* initDeclaratorList;
+};
+
+struct DeclarationSpecifiers : Unit {
+	StorageClassSpecifier* storageClassSpecifier;
+	TypeSpecifier* typeSpecifier;
+	TypeQualifier* typeQualifier;
+	DeclarationSpecifiers* next;
+};
+
+struct InitDeclaratorList : Unit {
+	InitDeclaratorList* next;
+	InitDeclarator* initDeclarator;
+};
+
+struct InitDeclarator : Unit {
+	Declarator* declarator;
+	Initializer* initializer;
+};
+
+struct StorageClassSpecifier : Unit {
+	bool isTypedef;
+	bool isExtern;
+	bool isStatic;
+	bool isRegister;
+};
+
+enum TypeSpecifierType {
+	VOID, CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, SIGNED, UNSIGNED, STRUCT, UNION, ENUM, TYPEDEF
+};
+struct TypeSpecifier : Unit {
+	TypeSpecifierType type;
+	string typedefName;
+	StructOrUnionSpecifier* structOrUnionSpecifier;
+	EnumSpecifier* enumSpecifier;
+};
+
+//
+enum StructOrUnionType {
+	STRUCT, UNION
+};
+struct StructOrUnion : Unit {
+	StructOrUnionType type;
+};
+
+struct StructDeclarator : Unit {
+	Declarator* declarator;
+	ConditionalExpression* conditionalExpression;
+};
+
+struct SpecifierQualifierList : Unit {
+	TypeSpecifier* typeSpecifier;
+	TypeQualifier* typeQualifier;
+	SpecifierQualifierList* next;
+};
+
+struct StructDeclaratorList : Unit {
+	StructDeclaratorList* next;
+	StructDeclarator* structDeclarator;
+};
+
+struct StructDeclaration : Unit {
+	SpecifierQualifierList* specifierQualifierList;
+	StructDeclaratorList* structDeclaratorList;
+};
+
+struct StructDeclarationList : Unit {
+	StructDeclaration* structDeclaration;
+	StructDeclarationList* next;
+};
+
+struct StructOrUnionSpecifier : Unit {
+	StructOrUnion* structOrUnion;
+	string identifier;
+	StructDeclarationList* structDeclarationList;
+};
+
+
+//
+struct Enumerator : Unit {
+	string identifier;
+	bool hasValue;
+	int value;
+};
+
+struct EnumeratorList : Unit {
+	Enumerator* enumerator;
+	EnumeratorList* next;
+};
+
+struct EnumSpecifier : Unit {
+	string enumName;
+	EnumeratorList* enumeratorList;
+};
+
+
+//
+struct TypeQualifierList : Unit {
+	bool isConst;
+	bool isVolatile;
+};
+
+enum TypeQualifierType {
+	CONST, VOLATILE
+};
+struct TypeQualifier : Unit {
+	TypeQualifierType type;
+};
+
+
+//
+struct IdentifierList : Unit {
+	string identifier;
+	IdentifierList* next;
+};
+
+struct Declarator : Unit {
+	Pointer* pointer;
+	DirectDeclarator* directDeclarator;
+};
+
+enum DirectDeclaratorType {
+	IDENTIFIER, FUNCTION_PTR, ARRAY, FUNCTION
+};
+struct DirectDeclarator {
+	DirectDeclaratorType type;
+	Declarator* declarator;
+	ConstantExpression* constantExpression;
+	ParameterTypeList* parameterTypeList;
+	DirectDeclarator* next;
+	string identifier;
+};
+
+struct DeclarationList : Unit {
+	DeclarationList* next;
+	Declaration* declaration;
+};
+
+struct DirectDeclaration : Unit {
+	Declarator* declarator;
+	DirectDeclaration* next;
+	string identifier;
+	ConditionalExpression* conditionalExpression;
+	ParameterTypeList* parameterTypeList;
+	IdentifierList* identifierList;
+};
+
+struct Pointer : Unit {
+	Pointer* pointer;
+	TypeQualifierList* typeQualifierList;
+};
+
+
+//
+struct ParameterDeclaration : Unit {
+	DeclarationSpecifiers* declarationSpecifiers;
+	Declarator* declarator;
+	AbstractDeclarator* abstractDeclarator;
+};
+
+struct ParameterList : Unit {
+	ParameterDeclaration* parameterDeclaration;
+	ParameterList* next;
+};
+
+struct ParameterTypeList : Unit {
+	ParameterList* parameterList;
+	bool hasEllipsis;
+};
+
+
+//
+struct Initializer : Unit {
+	AssignmentExpression* assignmentExpression;
+	InitializerList* initializerList;
+};
+
+struct InitializerList : Unit {
+	Initializer* initializer;
+	InitializerList* next;
+};
+
+
+//
+struct AbstractDeclarator : Unit {
+	Pointer* pointer;
+	DirectAbstractDeclarator* directAbstractDeclarator;
+};
+
+enum DirectAbstractDeclaratorType {
+	FUNCTION_PTR, FUNCTION, ARRAY, 
+};
+struct DirectAbstractDeclarator : Unit {
+	DirectAbstractDeclaratorType type;
+	AbstractDeclarator* abstractDeclarator;
+	ConstantExpression* constantExpression;
+	DirectAbstractDeclarator* next;
+	ParameterTypeList* parameterTypeList;
+};
+
+struct TypeName : Unit {
+	SpecifierQualifierList* specifierQualifierList;
+	AbstractDeclarator* abstractDeclarator;
+};
+
+
+//
+enum IterationStatementType {
+	WHILE, DO, FOR
+};
+struct IterationStatement : Unit {
+	IterationStatementType type;
+	Expression* expression1;
+	Expression* expression2;
+	Expression* expression3;
+	Statement* statement;
+};
+
+enum SelectionStatementType {
+	IF, IFELSE, SWITCH
+};
+struct SelectionStatement : Unit {
+	SelectionStatementType type;
+	Expression* expression;
+	Statement* statement1;
+	Statement* statement2;
+};
+
+struct StatementList : Unit {
+	Statement* statement;
+	StatementList* next;
+};
+
+enum LabeledStatementType {
+	DEFAULT, IDENTIFIER, CASE
+};
+struct LabeledStatement : Unit {
+	LabeledStatementType type;
+	string identifier;
+	Statement* statement;
+	ConstantExpression* constantExpression;
+};
+
+struct CompoundStatement : Unit {
+	StatementList* statementList;
+	DeclarationList* declarationList;
+};
+
+enum JumpStatementType {
+	GOTO, CONTINUE, BREAK, RETURN
+};
+struct JumpStatement : Unit {
+	JumpStatementType type;
+	string gotoIdentifier;
+	Expression* expression;
+};
+
+enum StatementType {
+	LABEL, COMPOUND, EXPRESSION, SELECTION, ITERATION, JUMP
+};
+struct Statement : Unit {
+	StatementType type;
+	LabeledStatement* labeledStatement;
+	CompoundStatement* compoundStatement;
+	Expression* expressionStatement;
+	SelectionStatement* selectionStatement;
+	IterationStatement* iterationStatement;
+	JumpStatement* jumpStatement;
+};
+
+
+//
+struct FunctionDefinition : Unit {
+	DeclarationSpecifiers* declarationSpecifiers;
+	Declarator* declarator;
+	DeclarationList* declarationList;
+	CompoundStatement* compoundStatement;
+};
